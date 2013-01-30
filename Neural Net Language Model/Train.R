@@ -5,6 +5,7 @@
 #library(Matrix)
 #library(parallel); options(mc.cores=4)
 # library(R.utils)
+# source("Neural Net Language Model/Train.R")
 
 source("Neural Net Language Model/MatlabFunctions.R")
 source("Neural Net Language Model/LoadData.R")
@@ -37,7 +38,7 @@ train <- function(epochs) {
      
      #      % LOAD DATA.
      data <- load_data(batchsize)
-     tmp <- size(data$train_input[[1]]$value)
+     tmp <- size(data$train_input[[1]])
      numwords <- tmp[1]
      #batchsize <- tmp[2]
      #numbatches <- tmp[3]
@@ -78,8 +79,8 @@ train <- function(epochs) {
                #target_batch <- data$train_target[,,m]
                #input_batch <- nextElem(inputIT)
                #target_batch <- nextElem(targetIT)
-               input_batch <- data$train_input[[m]]$value
-               target_batch <- data$train_target[[m]]$value
+               input_batch <- data$train_input[[m]]
+               target_batch <- data$train_target[[m]]
                
                dim(target_batch) <- NULL
                
