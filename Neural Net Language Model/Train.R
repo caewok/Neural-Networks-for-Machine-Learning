@@ -38,11 +38,11 @@ train <- function(epochs) {
      
      #      % LOAD DATA.
      data <- load_data(batchsize)
-     tmp <- size(data$train_input[[1]])
+     tmp <- size(data$train_input)
      numwords <- tmp[1]
      #batchsize <- tmp[2]
-     #numbatches <- tmp[3]
-     numbatches <- length(data$train_input)
+     numbatches <- tmp[3]
+     #numbatches <- length(data$train_input)
      vocab_size <- size(data$vocab, 2)  
      
      word_embedding_weights = init_wt * randn(vocab_size, numhid1);
@@ -75,14 +75,14 @@ train <- function(epochs) {
            #while(hasNext(inputIT) & hasNext(targetIT)) {    
                 
                 
-               #input_batch <- data$train_input[,,m]
-               #target_batch <- data$train_target[,,m]
+               input_batch <- data$train_input[,,m]
+               target_batch <- data$train_target[,,m]
                #input_batch <- nextElem(inputIT)
                #target_batch <- nextElem(targetIT)
-               input_batch <- data$train_input[[m]]
-               target_batch <- data$train_target[[m]]
+               #input_batch <- data$train_input[[m]]
+               #target_batch <- data$train_target[[m]]
                
-               dim(target_batch) <- NULL
+               #dim(target_batch) <- NULL
                
                #                % FORWARD PROPAGATE.
                #                % Compute the state of each layer in the network given the input batch and all weights and biases
