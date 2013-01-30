@@ -36,7 +36,7 @@ load_data_original <- function(N) {
      train_target <- reshape(data$trainData[D + 1, 1:(N*M), drop=F], 1, N, M)
      valid_input <- data$validData[1:D,, drop=F]
      valid_target <- data$validData[D + 1, , drop=F]
-     test_input <- data$validData[1:D, , drop=F]
+     test_input <- data$testData[1:D, , drop=F]
      test_target <- data$testData[D + 1, , drop=F]
      vocab <- data$vocab
       

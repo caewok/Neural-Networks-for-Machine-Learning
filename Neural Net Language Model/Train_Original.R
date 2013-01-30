@@ -5,6 +5,7 @@
 #library(Matrix)
 #library(parallel); options(mc.cores=4)
 # library(R.utils)
+# source("Neural Net Language Model/Train_Original.R")
 
 source("Neural Net Language Model/MatlabFunctions_Original.R")
 source("Neural Net Language Model/LoadData_Original.R")
@@ -217,9 +218,9 @@ train_original <- function(epochs) {
      
      neural_net_states <- fprop_original(data$test_input, word_embedding_weights, embed_to_hid_weights,
                                 hid_to_output_weights, hid_bias, output_bias)
-     datasetsize = size(data$valid_input, 2);
-     expanded_valid_target = expansion_matrix[, as.integer(data$test_target)];
-     CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) / datasetsize
+     datasetsize = size(data$test_input, 2);
+     expanded_test_target = expansion_matrix[, as.integer(data$test_target)];
+     CE = -matlab::sum(matlab::sum(expanded_test_target * log(neural_net_states$output_layer_state + tiny))) / datasetsize
      myPrintf('\rFinal Test CE %.3f\n', CE)
      
      end_time <- proc.time() 
