@@ -33,8 +33,16 @@ load_data <- function(N) {
      
      # shift to an list of M minibatches, each with D*N
      # looks like we threw out the remainder training data
-     train_input <- myReshape(data$trainData[1:D, 1:(N*M), drop=F], D, N, M)
-     train_target <- myReshape(data$trainData[D + 1, 1:(N*M), drop=F], 1, N, M)
+     start <- seq.int(1, N*M, by=1000)
+     end <- seq.int(1000, N*M, by=1000)
+     train_input <- mapply(function(x, start, end) x[,start:end], 
+                                           start=seq.int(1, N*M, by=1000), 
+                                           end=seq.int(1000, N*M, by=1000), 
+                                           MoreArgs=list(x=data$trainData[1:D, 1:(N*M)]), SIMPLIFY=F)
+     train_target <- mapply(function(x, start, end) x[,start:end], 
+                            start=seq.int(1, N*M, by=1000), 
+                            end=seq.int(1000, N*M, by=1000), 
+                            MoreArgs=list(x=data$trainData[D + 1, 1:(N*M), drop=F]), SIMPLIFY=F)
      valid_input <- data$validData[1:D,, drop=F]
      valid_target <- data$validData[D + 1, , drop=F]
      test_input <- data$validData[1:D, , drop=F]
