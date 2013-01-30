@@ -5,7 +5,7 @@
 library(R.matlab)
 library(matrixStats)
 
-fprop <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid_to_output_weights, hid_bias, output_bias) {
+fprop_original <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid_to_output_weights, hid_bias, output_bias) {
      #      % This method forward propagates through a neural network.
      #      % Inputs:
      #      %   input_batch: The input data as a matrix of size numwords X batchsize where,

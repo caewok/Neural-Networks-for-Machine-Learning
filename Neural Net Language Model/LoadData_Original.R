@@ -4,7 +4,7 @@ library(R.matlab)
 # library(Matrix)
 #library(parallel); options(mc.cores = 4)
 
-load_data <- function(N) {
+load_data_original <- function(N) {
      # % This method loads the training, validation and test set.
      # % It also divides the training set into mini-batches.
      # % Inputs:

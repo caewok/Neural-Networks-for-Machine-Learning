@@ -14,7 +14,7 @@ source("Neural Net Language Model/FProp_Original.R")
 # see also http://mathesaurus.sourceforge.net/octave-r.html
 
 # % This function trains a neural network language model.
-train <- function(epochs) {
+train_original <- function(epochs) {
      #      % Inputs:
      #      %   epochs: Number of epochs to run.
      #      % Output:
@@ -36,7 +36,7 @@ train <- function(epochs) {
      show_validation_CE_after = 1000
      
      #      % LOAD DATA.
-     data <- load_data(batchsize)
+     data <- load_data_original(batchsize)
      tmp <- size(data$train_input)
      numwords <- tmp[1]
      batchsize <- tmp[2]
@@ -73,14 +73,14 @@ train <- function(epochs) {
                #                % FORWARD PROPAGATE.
                #                % Compute the state of each layer in the network given the input batch and all weights and biases
                # returns the embedding, hidden and output layer states
-               neural_net_states <- fprop(input_batch, word_embedding_weights, embed_to_hid_weights, hid_to_output_weights, hid_bias, output_bias)
+               neural_net_states <- fprop_original(input_batch, word_embedding_weights, embed_to_hid_weights, hid_to_output_weights, hid_bias, output_bias)
                
                #                benchmark(
-               #                     neural_net_states <- fprop(input_batch, weights, repmat),
-               #                     neural_net_states2 <- fprop(input_batch, weights, myRepMat),
-               #                     neural_net_states3 <- fprop(input_batch, weights, myRepMat2),
-               #                     neural_net_states3 <- fprop(input_batch, weights, myRepMat3),
-               #                     neural_net_states4 <- fprop(input_batch, weights, myRepMat4),
+               #                     neural_net_states <- fprop_original(input_batch, weights, repmat),
+               #                     neural_net_states2 <- fprop_original(input_batch, weights, myRepMat),
+               #                     neural_net_states3 <- fprop_original(input_batch, weights, myRepMat2),
+               #                     neural_net_states3 <- fprop_original(input_batch, weights, myRepMat3),
+               #                     neural_net_states4 <- fprop_original(input_batch, weights, myRepMat4),
                #                     replications=10
                #                     )
                
@@ -180,14 +180,14 @@ train <- function(epochs) {
                #                % VALIDATE.
                if(mod(m, show_validation_CE_after) == 0) {
                     myPrintf('\rRunning validation ...')
-                    neural_net_states <- fprop(data$valid_input, word_embedding_weights, embed_to_hid_weights,
+                    neural_net_states <- fprop_original(data$valid_input, word_embedding_weights, embed_to_hid_weights,
                                                hid_to_output_weights, hid_bias, output_bias)
                     #                     benchmark(
-                    #                     neural_net_states <- fprop(data$valid_input, weights, fn=repmat),
-                    #                     neural_net_states2 <- fprop(data$valid_input, weights, fn=myRepMat),
-                    #                     neural_net_states3 <- fprop(data$valid_input, weights, myRepMat2),
-                    #                     neural_net_states4 <- fprop(data$valid_input, weights, myRepMat3),
-                    #                     neural_net_states5 <- fprop(data$valid_input, weights, myRepMat4),
+                    #                     neural_net_states <- fprop_original(data$valid_input, weights, fn=repmat),
+                    #                     neural_net_states2 <- fprop_original(data$valid_input, weights, fn=myRepMat),
+                    #                     neural_net_states3 <- fprop_original(data$valid_input, weights, myRepMat2),
+                    #                     neural_net_states4 <- fprop_original(data$valid_input, weights, myRepMat3),
+                    #                     neural_net_states5 <- fprop_original(data$valid_input, weights, myRepMat4),
                     #                     replications=2
                     #                     )
                     
@@ -205,7 +205,7 @@ train <- function(epochs) {
      #      % EVALUATE ON VALIDATION SET.
      myPrintf('\rRunning validation ...')
      
-     neural_net_states <- fprop(data$valid_input, word_embedding_weights, embed_to_hid_weights,
+     neural_net_states <- fprop_original(data$valid_input, word_embedding_weights, embed_to_hid_weights,
                                 hid_to_output_weights, hid_bias, output_bias)
      datasetsize <- size(data$valid_input, 2)
      expanded_valid_target <- expansion_matrix[, as.integer(data$valid_target)]
@@ -215,7 +215,7 @@ train <- function(epochs) {
      #      % EVALUATE ON TEST SET.
      myPrintf('\rRunning test ...');
      
-     neural_net_states <- fprop(data$test_input, word_embedding_weights, embed_to_hid_weights,
+     neural_net_states <- fprop_original(data$test_input, word_embedding_weights, embed_to_hid_weights,
                                 hid_to_output_weights, hid_bias, output_bias)
      datasetsize = size(data$valid_input, 2);
      expanded_valid_target = expansion_matrix[, as.integer(data$test_target)];
