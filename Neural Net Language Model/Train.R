@@ -171,27 +171,10 @@ train <- function(epochs) {
                }
                
              
-               #                % UPDATE WEIGHTS AND BIASES.
-               
-               deltas$word_embedding = momentum * deltas$word_embedding +
-                    gradients$word_embedding / batchsize;
-               weights$word_embedding = weights$word_embedding - (learning_rate * deltas$word_embedding);
-               
-               deltas$embed_to_hid = momentum * deltas$embed_to_hid + 
-                    gradients$embed_to_hid / batchsize;
-               weights$embed_to_hid = weights$embed_to_hid - (learning_rate * deltas$embed_to_hid);
-               
-               deltas$hid_to_output = momentum * deltas$hid_to_output + 
-                    gradients$hid_to_output / batchsize;
-               weights$hid_to_output = weights$hid_to_output - (learning_rate * deltas$hid_to_output);
-               
-               deltas$hid_bias = momentum * deltas$hid_bias + 
-                    gradients$hid_bias / batchsize;
-               weights$hid_bias =  weights$hid_bias - (learning_rate * deltas$hid_bias);
-               
-               deltas$output_bias = momentum * deltas$output_bias + 
-                    gradients$output_bias / batchsize;
-               weights$output_bias = weights$output_bias - (learning_rate * deltas$output_bias);
+               #                % UPDATE WEIGHTS AND BIASES.  
+               deltas <- mapply(delta_update_fn, delta=deltas, gradient=gradients, MoreArgs=list(momentum=momentum, batchsize=batchsize))
+               weights <- mapply(weights_update_fn, delta=deltas, weight=weights, MoreArgs=list(learning_rate=learning_rate))  
+          
                
                #                % VALIDATE.
                if(mod(m, show_validation_CE_after) == 0) {
@@ -242,6 +225,8 @@ train <- function(epochs) {
                  vocab=data$vocab))
 }
 
+delta_update_fn <- function(delta, gradient, momentum, batchsize) { momentum * delta + gradient / batchsize}
+weights_update_fn <- function(delta, weight, learning_rate) {weight - (learning_rate * delta)}
 
 
 # Rprof()
