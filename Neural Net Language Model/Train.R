@@ -43,18 +43,31 @@ train <- function(epochs) {
      numbatches <- length(data$train_input)
      vocab_size <- size(data$vocab, 2)  
      
-     word_embedding_weights = init_wt * randn(vocab_size, numhid1);
-     embed_to_hid_weights = init_wt * randn(numwords * numhid1, numhid2);
-     hid_to_output_weights = init_wt * randn(numhid2, vocab_size);
-     hid_bias = zeros(numhid2, 1);
-     output_bias = zeros(vocab_size, 1);
      
-     word_embedding_weights_delta = zeros(vocab_size, numhid1);
-     word_embedding_weights_gradient = zeros(vocab_size, numhid1);
-     embed_to_hid_weights_delta = zeros(numwords * numhid1, numhid2);
-     hid_to_output_weights_delta = zeros(numhid2, vocab_size);
-     hid_bias_delta = zeros(numhid2, 1);
-     output_bias_delta = zeros(vocab_size, 1);
+     # Initialize weights and gradients
+     d1 <- list(word_embedding=vocab_size,
+                embed_to_hid=numwords * numhid1,
+                hid_to_output=numhid2,
+                hid_bias=numhid2,
+                output_bias=vocab_size)
+     d2 <- list(word_embedding=numhid1,
+                embed_to_hid=numhid2,
+                hid_to_output=vocab_size,
+                hid_bias=1,
+                output_bias=1)
+     
+     
+     weights <- c(mapply(function(x, y, init_wt) init_wt*randn(x,y), x=d1[1:3], y=d2[1:3], MoreArgs=list(init_wt=init_wt)),
+                  mapply(zeros, d1[4:5], d2[4:5])) # mapply(rep.int, times=d1[4:5], MoreArgs=list(x=0))
+     
+     deltas <- mapply(zeros, d1[1:5], d2[1:5])
+     
+     gradients <- list(word_embedding=zeros(d1[[1]], d2[[1]]),
+                       embed_to_hid=NULL,
+                       hid_to_output=NULL,
+                       hid_bias=NULL,
+                       output_bias=NULL)
+     
      expansion_matrix = eye(vocab_size);
      count = 0
      tiny = exp(-30)
@@ -76,7 +89,7 @@ train <- function(epochs) {
                #                % FORWARD PROPAGATE.
                #                % Compute the state of each layer in the network given the input batch and all weights and biases
                # returns the embedding, hidden and output layer states
-               neural_net_states <- fprop(input_batch, word_embedding_weights, embed_to_hid_weights, hid_to_output_weights, hid_bias, output_bias)
+               neural_net_states <- fprop(input_batch, weights)
                
                #                benchmark(
                #                     neural_net_states <- fprop(input_batch, weights, repmat),
@@ -112,9 +125,9 @@ train <- function(epochs) {
                #gradients$hid_to_output =  myTCrossProd(neural_net_states$hidden_layer_state, error_deriv)     
                #gradients$output_bias = rowSums(error_deriv)
                #back_propagated_deriv_1 = myMatMult(weights$hid_to_output,error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
-               hid_to_output_weights_gradient <- neural_net_states$hidden_layer_state %*% t(error_deriv)
-               output_bias_gradient <- rowSums(error_deriv)
-               back_propagated_deriv_1 <- (hid_to_output_weights %*% error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
+               gradients$hid_to_output <- neural_net_states$hidden_layer_state %*% t(error_deriv)
+               gradients$output_bias <- rowSums(error_deriv)
+               back_propagated_deriv_1 <- (weights$hid_to_output %*% error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
                
                
                #                %% HIDDEN LAYER.
@@ -123,7 +136,7 @@ train <- function(epochs) {
                #                % Options:
                #                     % (a) embed_to_hid_weights_gradient = t(back_propagated_deriv_1) %*% embedding_layer_state;
                #gradients$embed_to_hid = myTCrossProd(neural_net_states$embedding_layer_state, back_propagated_deriv_1);
-               embed_to_hid_weights_gradient <- neural_net_states$embedding_layer_state %*% t(back_propagated_deriv_1)
+               gradients$embed_to_hid <- neural_net_states$embedding_layer_state %*% t(back_propagated_deriv_1)
                #                % (c) embed_to_hid_weights_gradient = back_propagated_deriv_1;
                #                % (d) embed_to_hid_weights_gradient = embedding_layer_state;
                
@@ -131,7 +144,7 @@ train <- function(epochs) {
                #                gradients$hid_bias = zeros(numhid2, 1);
                #                % Options
                #gradients$hid_bias = rowSums(back_propagated_deriv_1);
-               hid_bias_gradient <- rowSums(back_propagated_deriv_1)
+               gradients$hid_bias <- rowSums(back_propagated_deriv_1)
                #                % (b) hid_bias_gradient = apply(back_propagated_deriv_1, 2, sum);
                #                % (c) hid_bias_gradient = back_propagated_deriv_1;
                #                % (d) hid_bias_gradient = back_propagated_deriv_1';
@@ -140,7 +153,7 @@ train <- function(epochs) {
                #                 back_propagated_deriv_2 = zeros(numhid2, batchsize);
                #                % Options
                #back_propagated_deriv_2 = myMatMult(weights$embed_to_hid, back_propagated_deriv_1);
-               back_propagated_deriv_2 <- embed_to_hid_weights %*% back_propagated_deriv_1
+               back_propagated_deriv_2 <- weights$embed_to_hid %*% back_propagated_deriv_1
                #                % (b) back_propagated_deriv_2 = back_propagated_deriv_1 * embed_to_hid_weights;
                #                % (c) back_propagated_deriv_2 = back_propagated_deriv_1' * embed_to_hid_weights;
                #                % (d) back_propagated_deriv_2 = back_propagated_deriv_1 * embed_to_hid_weights';
@@ -148,11 +161,11 @@ train <- function(epochs) {
                #gradients$word_embedding[,] = 0;
                #                %% EMBEDDING LAYER.
                
-               word_embedding_weights_gradient[,] <- 0
+               gradients$word_embedding[,] <- 0
                for(w in 1:numwords) {
                     #tmp <- back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]
                     #gradients$word_embedding= gradients$word_embedding + myTCrossProd(expansion_matrix[, as.integer(input_batch[w, ])], tmp)
-                    word_embedding_weights_gradient <- word_embedding_weights_gradient + 
+                    gradients$word_embedding <- gradients$word_embedding + 
                          expansion_matrix[,as.integer(input_batch[w,])] %*% 
                          t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ])
                }
@@ -160,31 +173,30 @@ train <- function(epochs) {
              
                #                % UPDATE WEIGHTS AND BIASES.
                
-               word_embedding_weights_delta = momentum * word_embedding_weights_delta +
-                    word_embedding_weights_gradient / batchsize;
-               word_embedding_weights = word_embedding_weights - (learning_rate * word_embedding_weights_delta);
+               deltas$word_embedding = momentum * deltas$word_embedding +
+                    gradients$word_embedding / batchsize;
+               weights$word_embedding = weights$word_embedding - (learning_rate * deltas$word_embedding);
                
-               embed_to_hid_weights_delta = momentum * embed_to_hid_weights_delta + 
-                    embed_to_hid_weights_gradient / batchsize;
-               embed_to_hid_weights = embed_to_hid_weights - (learning_rate * embed_to_hid_weights_delta);
+               deltas$embed_to_hid = momentum * deltas$embed_to_hid + 
+                    gradients$embed_to_hid / batchsize;
+               weights$embed_to_hid = weights$embed_to_hid - (learning_rate * deltas$embed_to_hid);
                
-               hid_to_output_weights_delta = momentum * hid_to_output_weights_delta + 
-                    hid_to_output_weights_gradient / batchsize;
-               hid_to_output_weights = hid_to_output_weights - (learning_rate * hid_to_output_weights_delta);
+               deltas$hid_to_output = momentum * deltas$hid_to_output + 
+                    gradients$hid_to_output / batchsize;
+               weights$hid_to_output = weights$hid_to_output - (learning_rate * deltas$hid_to_output);
                
-               hid_bias_delta = momentum * hid_bias_delta + 
-                    hid_bias_gradient / batchsize;
-               hid_bias = hid_bias - (learning_rate * hid_bias_delta);
+               deltas$hid_bias = momentum * deltas$hid_bias + 
+                    gradients$hid_bias / batchsize;
+               weights$hid_bias =  weights$hid_bias - (learning_rate * deltas$hid_bias);
                
-               output_bias_delta = momentum * output_bias_delta + 
-                    output_bias_gradient / batchsize;
-               output_bias = output_bias - (learning_rate * output_bias_delta);
+               deltas$output_bias = momentum * deltas$output_bias + 
+                    gradients$output_bias / batchsize;
+               weights$output_bias = weights$output_bias - (learning_rate * deltas$output_bias);
                
                #                % VALIDATE.
                if(mod(m, show_validation_CE_after) == 0) {
                     myPrintf('\rRunning validation ...')
-                    neural_net_states <- fprop(data$valid_input, word_embedding_weights, embed_to_hid_weights,
-                                               hid_to_output_weights, hid_bias, output_bias)
+                    neural_net_states <- fprop(data$valid_input, weights)
                     #                     benchmark(
                     #                     neural_net_states <- fprop(data$valid_input, weights, fn=repmat),
                     #                     neural_net_states2 <- fprop(data$valid_input, weights, fn=myRepMat),
@@ -208,8 +220,7 @@ train <- function(epochs) {
      #      % EVALUATE ON VALIDATION SET.
      myPrintf('\rRunning validation ...')
      
-     neural_net_states <- fprop(data$valid_input, word_embedding_weights, embed_to_hid_weights,
-                                hid_to_output_weights, hid_bias, output_bias)
+     neural_net_states <- fprop(data$valid_input, weights)
      datasetsize <- size(data$valid_input, 2)
      expanded_valid_target <- expansion_matrix[, as.integer(data$valid_target)]
      CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) /datasetsize
@@ -218,21 +229,16 @@ train <- function(epochs) {
      #      % EVALUATE ON TEST SET.
      myPrintf('\rRunning test ...');
      
-     neural_net_states <- fprop(data$test_input, word_embedding_weights, embed_to_hid_weights,
-                                hid_to_output_weights, hid_bias, output_bias)
-     datasetsize = size(data$valid_input, 2);
-     expanded_valid_target = expansion_matrix[, as.integer(data$test_target)];
-     CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) / datasetsize
+     neural_net_states <- fprop(data$test_input, weights)
+     datasetsize = size(data$test_input, 2);
+     expanded_test_target = expansion_matrix[, as.integer(data$test_target)];
+     CE = -matlab::sum(matlab::sum(expanded_test_target * log(neural_net_states$output_layer_state + tiny))) / datasetsize
      myPrintf('\rFinal Test CE %.3f\n', CE)
      
      end_time <- proc.time() 
      
      print(end_time - start_time)
-     return(list(word_embedding_weights = word_embedding_weights, 
-                 embed_to_hid_weights = embed_to_hid_weights,
-                 hid_to_output_weights = hid_to_output_weights,
-                 hid_bias = hid_bias,
-                 output_bias = output_bias,
+     return(list(weights=weights,
                  vocab=data$vocab))
 }
 

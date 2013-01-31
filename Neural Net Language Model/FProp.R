@@ -5,7 +5,7 @@
 library(R.matlab)
 library(matrixStats)
 
-fprop <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid_to_output_weights, hid_bias, output_bias) {
+fprop <- function(input_batch, weights) {
      #      % This method forward propagates through a neural network.
      #      % Inputs:
      #      %   input_batch: The input data as a matrix of size numwords X batchsize where,
@@ -43,10 +43,10 @@ fprop <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid
      numwords <- tmp[1]
      batchsize <- tmp[2]
      
-     tmp <- size(word_embedding_weights)  # basically dim
+     tmp <- size(weights$word_embedding)  # basically dim
      vocab_size <- tmp[1]
      numhid1 <- tmp[2]
-     numhid2 <- size(embed_to_hid_weights, 2)
+     numhid2 <- size(weights$embed_to_hid, 2)
      
      #      %% COMPUTE STATE OF WORD EMBEDDING LAYER.
      #      % Look up the inputs word indices in the word_embedding_weights matrix.
@@ -58,7 +58,7 @@ fprop <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid
      #embedding_layer_state <- reshape(t(word_embedding_weights[reshape(input_batch, 1, []), ]), numhid1 * numwords, [])
      
      # [] is allowed in reshape: one dimension remains unspecified and Octave will determine it automatically
-     tmp <- t(word_embedding_weights[reshape(input_batch, 1, length(input_batch)), ])
+     tmp <- t(weights$word_embedding[reshape(input_batch, 1, length(input_batch)), ])
      embedding_layer_state <- reshape(tmp, numhid1 * numwords, length(tmp) / (numhid1 * numwords))
      
      #embedding_layer_state2 <- matlab::reshape(as.matrix(weights$word_embedding[as.numeric(input_batch), ]), numhid1*numwords, 100)
@@ -67,7 +67,7 @@ fprop <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid
      #      % Compute inputs to hidden units.
      # crossprod = t(x) %*% y
      #inputs_to_hidden_units = myCrossProd(weights$embed_to_hid, embedding_layer_state) + fn(weights$hid_bias, 1, batchsize)     
-     inputs_to_hidden_units <- t(embed_to_hid_weights) %*% embedding_layer_state + repmat(hid_bias, 1, batchsize)
+     inputs_to_hidden_units <- t(weights$embed_to_hid) %*% embedding_layer_state + repmat(weights$hid_bias, 1, batchsize)
      
      
      #      benchmark(
@@ -92,7 +92,7 @@ fprop <- function(input_batch, word_embedding_weights, embed_to_hid_weights, hid
      #       inputs_to_softmax = zeros(vocab_size, batchsize)
      #      % Options
      #inputs_to_softmax = myCrossProd(weights$hid_to_output, hidden_layer_state) +  fn(weights$output_bias, 1, batchsize)
-     inputs_to_softmax <- t(hid_to_output_weights) %*% hidden_layer_state + repmat(output_bias, 1, batchsize)
+     inputs_to_softmax <- t(weights$hid_to_output) %*% hidden_layer_state + repmat(weights$output_bias, 1, batchsize)
      
      #      % (b) inputs_to_softmax = t(hid_to_output_weights) %*% hidden_layer_state +  repmat(output_bias, batchsize, 1);
      #      % (c) inputs_to_softmax = hidden_layer_state %*% t(hid_to_output_weights) +  repmat(output_bias, 1, batchsize);
