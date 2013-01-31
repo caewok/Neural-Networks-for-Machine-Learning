@@ -71,7 +71,28 @@ train <- function(epochs) {
      expansion_matrix = eye(vocab_size);
      count = 0
      tiny = exp(-30)
-         
+     
+     
+     #                %% Expand the target to a sparse 1-of-K vector.
+     #      expanded_target_batch = expansion_matrix[, as.integer(target_batch)]   # could expand this in a list outside the loop
+     expanded_target_batches <- lapply(data$train_target, function(target_batch, expansion_matrix) {expansion_matrix[, as.integer(target_batch)]}, expansion_matrix=expansion_matrix)
+     # mclapply seems to do worse
+     
+     expandInputBatchFn <- function(w, expansion_matrix, input_batch) {
+          expansion_matrix[, as.integer(input_batch[w,])]
+          
+     }
+     expandInputBatchFn2 <- function(numwords, expansion_matrix, input_batch) {
+          lapply(1:numwords, expandInputBatchFn, expansion_matrix=expansion_matrix, input_batch=input_batch)
+     }
+     
+     input_batch_expansions <- lapply(data$train_input, expandInputBatchFn2, numwords=numwords, expansion_matrix=expansion_matrix)
+     
+     datasetsize <- size(data$valid_input, 2)
+     expanded_valid_target <- expansion_matrix[, as.integer(data$valid_target)]
+     
+     
+     
      #      % TRAIN.
      for(epoch in 1:epochs) {
           myPrintf('Epoch %d\n', epoch)
@@ -83,13 +104,14 @@ train <- function(epochs) {
           for(m in 1:numbatches) {
                input_batch <- data$train_input[[m]]
                target_batch <- data$train_target[[m]]
-               
-               dim(target_batch) <- NULL
+               expanded_target_batch <- expanded_target_batches[[m]]
+               # dim(target_batch) <- NULL
                
                #                % FORWARD PROPAGATE.
                #                % Compute the state of each layer in the network given the input batch and all weights and biases
                # returns the embedding, hidden and output layer states
                neural_net_states <- fprop(input_batch, weights)
+               
                
                #                benchmark(
                #                     neural_net_states <- fprop(input_batch, weights, repmat),
@@ -101,10 +123,9 @@ train <- function(epochs) {
                #                     )
                
                #                % COMPUTE DERIVATIVE.
-               #                %% Expand the target to a sparse 1-of-K vector.
-               expanded_target_batch = expansion_matrix[, as.integer(target_batch)]
+
                #                %% Compute derivative of cross-entropy loss function.
-               error_deriv = neural_net_states$output_layer_state - expanded_target_batch
+               error_deriv = neural_net_states$output_layer_state - expanded_target_batch  # all the derivatives are not saved between loops
                
                #                % MEASURE LOSS FUNCTION.
                CE = -matlab::sum(matlab::sum(expanded_target_batch * log(neural_net_states$output_layer_state + tiny))) / batchsize
@@ -160,17 +181,36 @@ train <- function(epochs) {
                
                #gradients$word_embedding[,] = 0;
                #                %% EMBEDDING LAYER.
+#                fn1 <- function() {
+#                gradients$word_embedding[,] <- 0
+#                for(w in 1:numwords) {
+#                     #tmp <- back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]
+#                     #gradients$word_embedding= gradients$word_embedding + myTCrossProd(expansion_matrix[, as.integer(input_batch[w, ])], tmp)
+#                     gradients$word_embedding <- gradients$word_embedding + 
+#                          (expansion_matrix[,as.integer(input_batch[w,])] %*%   # first half here is very similar to the above expansion_matrix; can be pre-calculated
+#                          t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]))
+#                }
+#                
+#                }
                
-               gradients$word_embedding[,] <- 0
-               for(w in 1:numwords) {
-                    #tmp <- back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]
-                    #gradients$word_embedding= gradients$word_embedding + myTCrossProd(expansion_matrix[, as.integer(input_batch[w, ])], tmp)
-                    gradients$word_embedding <- gradients$word_embedding + 
-                         expansion_matrix[,as.integer(input_batch[w,])] %*% 
-                         t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ])
-               }
+               # A1 = 0 
+               # A2 = A1 + (B1 %*% C1)
+               # A3 = A2 + (B2 %*% C2)
+               # A4 = A3 + (B3 %*% C3)
+               #         A2                  A3                                 A4
+               # A4 = 0 + (B1 %*% C1) + (B2 %*% C2)  + (B3 %*% C3) 
+               # 
+               # 
                
-             
+               t_back_prop_derivs <- lapply(1:numwords, 
+                                            function(w, back_propagated_deriv_2, numhid1) { t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]) },
+                                            back_propagated_deriv_2=back_propagated_deriv_2,
+                                            numhid1=numhid1)
+               
+               mult_res <- mapply("%*%", input_batch_expansions[[m]], t_back_prop_derivs, SIMPLIFY=F)
+               gradients$word_embedding <- mult_res[[1]] + mult_res[[2]] + mult_res[[3]]
+                
+               
                #                % UPDATE WEIGHTS AND BIASES.  
                deltas <- mapply(delta_update_fn, delta=deltas, gradient=gradients, MoreArgs=list(momentum=momentum, batchsize=batchsize))
                weights <- mapply(weights_update_fn, delta=deltas, weight=weights, MoreArgs=list(learning_rate=learning_rate))  
@@ -189,8 +229,7 @@ train <- function(epochs) {
                     #                     replications=2
                     #                     )
                     
-                    datasetsize <- size(data$valid_input, 2)
-                    expanded_valid_target <- expansion_matrix[, as.integer(data$valid_target)]
+                    
                     CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) /datasetsize
                     myPrintf(' Validation CE %.3f\n', CE)
                }
@@ -204,8 +243,6 @@ train <- function(epochs) {
      myPrintf('\rRunning validation ...')
      
      neural_net_states <- fprop(data$valid_input, weights)
-     datasetsize <- size(data$valid_input, 2)
-     expanded_valid_target <- expansion_matrix[, as.integer(data$valid_target)]
      CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) /datasetsize
      myPrintf('\rFinal Validation CE %.3f\n', CE)
      
