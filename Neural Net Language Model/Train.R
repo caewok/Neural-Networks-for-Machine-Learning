@@ -191,12 +191,12 @@ BProp <- function(neural_net_states, weights, expanded_target_batch, input_batch
      
      #                %% Compute derivative of cross-entropy loss function.
      error_deriv = neural_net_states$output_layer_state - expanded_target_batch  # all the derivatives are not saved between loops
-     gradients$hid_to_output <- neural_net_states$hidden_layer_state %*% t(error_deriv)
+     gradients$hid_to_output <- myTCrossProd(neural_net_states$hidden_layer_state, error_deriv)
      gradients$output_bias <- rowSums(error_deriv)
-     back_propagated_deriv_1 <- (weights$hid_to_output %*% error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
-     gradients$embed_to_hid <- neural_net_states$embedding_layer_state %*% t(back_propagated_deriv_1)
+     back_propagated_deriv_1 <- myMatMult(weights$hid_to_output, error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
+     gradients$embed_to_hid <- myTCrossProd(neural_net_states$embedding_layer_state, back_propagated_deriv_1)
      gradients$hid_bias <- rowSums(back_propagated_deriv_1)
-     back_propagated_deriv_2 <- weights$embed_to_hid %*% back_propagated_deriv_1
+     back_propagated_deriv_2 <- myMatMult(weights$embed_to_hid, back_propagated_deriv_1)
      
      # Embedding layer
      
@@ -205,7 +205,7 @@ BProp <- function(neural_net_states, weights, expanded_target_batch, input_batch
                                   back_propagated_deriv_2=back_propagated_deriv_2,
                                   numhid1=numhid1)
      
-     mult_res <- mapply("%*%", input_batch_expansion, t_back_prop_derivs, SIMPLIFY=F)
+     mult_res <- mapply(myMatMult, input_batch_expansion, t_back_prop_derivs, SIMPLIFY=F) # this could use crossprod if t_back_prop is changed
      gradients$word_embedding <- mult_res[[1]] + mult_res[[2]] + mult_res[[3]]
      
      return(gradients)
