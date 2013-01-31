@@ -5,7 +5,7 @@
 library(R.matlab)
 library(matrixStats)
 
-fprop <- function(input_batch, weights) {
+fprop <- function(input_batch, weights, fn) {
      #      % This method forward propagates through a neural network.
      #      % Inputs:
      #      %   input_batch: The input data as a matrix of size numwords X batchsize where,
@@ -58,8 +58,8 @@ fprop <- function(input_batch, weights) {
      #embedding_layer_state <- reshape(t(word_embedding_weights[reshape(input_batch, 1, []), ]), numhid1 * numwords, [])
      
      # [] is allowed in reshape: one dimension remains unspecified and Octave will determine it automatically
-     tmp <- t(weights$word_embedding[reshape(input_batch, 1, length(input_batch)), ])
-     embedding_layer_state <- reshape(tmp, numhid1 * numwords, length(tmp) / (numhid1 * numwords))
+     tmp <- t(weights$word_embedding[fn(input_batch, 1, length(input_batch)), ])
+     embedding_layer_state <- fn(tmp, numhid1 * numwords, length(tmp) / (numhid1 * numwords))
      
      #embedding_layer_state2 <- matlab::reshape(as.matrix(weights$word_embedding[as.numeric(input_batch), ]), numhid1*numwords, 100)
      

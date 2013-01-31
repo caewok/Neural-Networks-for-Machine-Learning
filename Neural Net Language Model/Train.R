@@ -109,7 +109,17 @@ train <- function(epochs) {
                #                % FORWARD PROPAGATE.
                #                % Compute the state of each layer in the network given the input batch and all weights and biases
                # returns the embedding, hidden and output layer states
-               neural_net_states <- fprop(input_batch, weights)
+               
+               
+               neural_net_states <- fprop(input_batch, weights, fn)
+               
+               res <- microbenchmark(
+                    fprop(input_batch, weights, reshape),
+                    fprop(input_batch, weights, myReshape),
+                    times=100
+                    )
+               print(res, "s")
+               boxplot(res, "s")
                
                
                
