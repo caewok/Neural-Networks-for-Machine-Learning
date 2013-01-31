@@ -91,7 +91,7 @@ myTCrossProd <- function(a, b=NULL) {
           dim.a <- dim(a)
           dim.b <- dim(b)
           is.vector <- is.null(dim.a) | is.null(dim.b) | 1 %in% dim.a | 1 %in% dim.b
-          if(is.vector) {
+          if(!is.vector) {
                classes <- c(class(a), class(b))                              
                is.sparse.matrix <- all(classes %in% SPARSE_MATRIX_CLASSES)  # sparseVector as well, but not needed here
                

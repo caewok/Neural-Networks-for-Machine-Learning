@@ -217,13 +217,18 @@ SumV <- function(...) {
      nargs <- length(dots <- list(...))
      stopifnot(nargs > 0)
      
-     if(nargs == 2) {
-          return(dots[[1]] + dots[[2]])
-     } else if(nargs == 1) {
-          return(dots[[1]]) 
-     } else {
-          return(dots[[1]] + do.call(SumV, dots[-1]))
-     }
+     # likely more efficient to split the items in half
+     # catch end states and 3 args (for efficiency)
+     res <- switch(nargs, 
+                   dots[[1]],           
+                   dots[[1]] + dots[[2]],
+                   dots[[1]] + dots[[2]] + dots[[3]]
+            )
+     
+     if(is.null(res)) {
+          split_index <- floor(nargs / 2)
+          return(do.call(SumV, dots[1:split_index]) + do.call(SumV, dots[(split_index+1):nargs]))
+     } else return(res)
 }
 
 Validate <- function(input, weights, expanded_target) {
