@@ -200,19 +200,31 @@ BProp <- function(neural_net_states, weights, expanded_target_batch, input_batch
      
      # Embedding layer
      
-     t_back_prop_derivs <- lapply(1:numwords, 
-                                  function(w, back_propagated_deriv_2, numhid1) { t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]) },
+     back_prop_derivs <- lapply(1:numwords, 
+                                  function(w, back_propagated_deriv_2, numhid1) { back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ] },
                                   back_propagated_deriv_2=back_propagated_deriv_2,
                                   numhid1=numhid1)
      
-     mult_res <- mapply(myMatMult, input_batch_expansion, t_back_prop_derivs, SIMPLIFY=F) # this could use crossprod if t_back_prop is changed
-     gradients$word_embedding <- mult_res[[1]] + mult_res[[2]] + mult_res[[3]]
-     
+     mult_res <- mapply(myTCrossProd, input_batch_expansion, back_prop_derivs, SIMPLIFY=F) # this could use crossprod if t_back_prop is changed
+     gradients$word_embedding <- do.call(SumV, mult_res)
      return(gradients)
      
      
 }
 
+SumV <- function(...) {
+     # Add multiple items together, i.e. A + B + C + D
+     nargs <- length(dots <- list(...))
+     stopifnot(nargs > 0)
+     
+     if(nargs == 2) {
+          return(dots[[1]] + dots[[2]])
+     } else if(nargs == 1) {
+          return(dots[[1]]) 
+     } else {
+          return(dots[[1]] + do.call(SumV, dots[-1]))
+     }
+}
 
 Validate <- function(input, weights, expanded_target) {
      myPrintf('\rRunning validation ...')
