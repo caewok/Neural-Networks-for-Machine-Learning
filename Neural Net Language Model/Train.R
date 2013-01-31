@@ -216,14 +216,14 @@ BProp <- function(neural_net_states, weights, expanded_target_batch, input_batch
 
 Validate <- function(input, weights, expanded_target) {
      myPrintf('\rRunning validation ...')
-     datasetsize = size(input, 2);
+     datasetsize <- ncol(input)
      neural_net_states <- fprop(input, weights) 
      return(CEfn(expanded_target, neural_net_states$output_layer_state, datasetsize))
 }
 
 CEfn <- function(expanded_target, output_layer_state, datasetsize) {
      tiny <- exp(-30)
-     CE <- -matlab::sum(matlab::sum(expanded_target * log(output_layer_state + tiny))) / datasetsize
+     CE <- -sum(colSums(expanded_target * log(output_layer_state + tiny))) / datasetsize
      return(CE)
 }
 
