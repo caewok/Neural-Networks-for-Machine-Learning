@@ -62,15 +62,15 @@ train <- function(epochs) {
      
      deltas <- mapply(zeros, d1[1:5], d2[1:5])
      
-     gradients <- list(word_embedding=zeros(d1[[1]], d2[[1]]),
-                       embed_to_hid=NULL,
-                       hid_to_output=NULL,
-                       hid_bias=NULL,
-                       output_bias=NULL)
+#      gradients <- list(word_embedding=zeros(d1[[1]], d2[[1]]),
+#                        embed_to_hid=NULL,
+#                        hid_to_output=NULL,
+#                        hid_bias=NULL,
+#                        output_bias=NULL)
      
      expansion_matrix = eye(vocab_size);
      count = 0
-     tiny = exp(-30)
+     
      
      
      #                %% Expand the target to a sparse 1-of-K vector.
@@ -88,7 +88,6 @@ train <- function(epochs) {
      
      input_batch_expansions <- lapply(data$train_input, expandInputBatchFn2, numwords=numwords, expansion_matrix=expansion_matrix)
      
-     datasetsize <- size(data$valid_input, 2)
      expanded_valid_target <- expansion_matrix[, as.integer(data$valid_target)]
      
      
@@ -113,22 +112,9 @@ train <- function(epochs) {
                neural_net_states <- fprop(input_batch, weights)
                
                
-               #                benchmark(
-               #                     neural_net_states <- fprop(input_batch, weights, repmat),
-               #                     neural_net_states2 <- fprop(input_batch, weights, myRepMat),
-               #                     neural_net_states3 <- fprop(input_batch, weights, myRepMat2),
-               #                     neural_net_states3 <- fprop(input_batch, weights, myRepMat3),
-               #                     neural_net_states4 <- fprop(input_batch, weights, myRepMat4),
-               #                     replications=10
-               #                     )
-               
-               #                % COMPUTE DERIVATIVE.
-
-               #                %% Compute derivative of cross-entropy loss function.
-               error_deriv = neural_net_states$output_layer_state - expanded_target_batch  # all the derivatives are not saved between loops
                
                #                % MEASURE LOSS FUNCTION.
-               CE = -matlab::sum(matlab::sum(expanded_target_batch * log(neural_net_states$output_layer_state + tiny))) / batchsize
+               CE = CEfn(expanded_target_batch, neural_net_states$output_layer_state, batchsize)
                count =  count + 1
                this_chunk_CE = this_chunk_CE + (CE - this_chunk_CE) / count
                trainset_CE = trainset_CE + (CE - trainset_CE) / m
@@ -141,96 +127,15 @@ train <- function(epochs) {
                }
                
                #                % BACK PROPAGATE.
-               #                %% OUTPUT LAYER.
-               # tcrossprod == x %*% t(y)
-               #gradients$hid_to_output =  myTCrossProd(neural_net_states$hidden_layer_state, error_deriv)     
-               #gradients$output_bias = rowSums(error_deriv)
-               #back_propagated_deriv_1 = myMatMult(weights$hid_to_output,error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
-               gradients$hid_to_output <- neural_net_states$hidden_layer_state %*% t(error_deriv)
-               gradients$output_bias <- rowSums(error_deriv)
-               back_propagated_deriv_1 <- (weights$hid_to_output %*% error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
-               
-               
-               #                %% HIDDEN LAYER.
-               #                % FILL IN CODE. Replace the line below by one of the options.
-               #                gradients$embed_to_hid = zeros(numhid1 * numwords, numhid2);
-               #                % Options:
-               #                     % (a) embed_to_hid_weights_gradient = t(back_propagated_deriv_1) %*% embedding_layer_state;
-               #gradients$embed_to_hid = myTCrossProd(neural_net_states$embedding_layer_state, back_propagated_deriv_1);
-               gradients$embed_to_hid <- neural_net_states$embedding_layer_state %*% t(back_propagated_deriv_1)
-               #                % (c) embed_to_hid_weights_gradient = back_propagated_deriv_1;
-               #                % (d) embed_to_hid_weights_gradient = embedding_layer_state;
-               
-               #                % FILL IN CODE. Replace the line below by one of the options.
-               #                gradients$hid_bias = zeros(numhid2, 1);
-               #                % Options
-               #gradients$hid_bias = rowSums(back_propagated_deriv_1);
-               gradients$hid_bias <- rowSums(back_propagated_deriv_1)
-               #                % (b) hid_bias_gradient = apply(back_propagated_deriv_1, 2, sum);
-               #                % (c) hid_bias_gradient = back_propagated_deriv_1;
-               #                % (d) hid_bias_gradient = back_propagated_deriv_1';
-               
-               #                % FILL IN CODE. Replace the line below by one of the options.
-               #                 back_propagated_deriv_2 = zeros(numhid2, batchsize);
-               #                % Options
-               #back_propagated_deriv_2 = myMatMult(weights$embed_to_hid, back_propagated_deriv_1);
-               back_propagated_deriv_2 <- weights$embed_to_hid %*% back_propagated_deriv_1
-               #                % (b) back_propagated_deriv_2 = back_propagated_deriv_1 * embed_to_hid_weights;
-               #                % (c) back_propagated_deriv_2 = back_propagated_deriv_1' * embed_to_hid_weights;
-               #                % (d) back_propagated_deriv_2 = back_propagated_deriv_1 * embed_to_hid_weights';
-               
-               #gradients$word_embedding[,] = 0;
-               #                %% EMBEDDING LAYER.
-#                fn1 <- function() {
-#                gradients$word_embedding[,] <- 0
-#                for(w in 1:numwords) {
-#                     #tmp <- back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]
-#                     #gradients$word_embedding= gradients$word_embedding + myTCrossProd(expansion_matrix[, as.integer(input_batch[w, ])], tmp)
-#                     gradients$word_embedding <- gradients$word_embedding + 
-#                          (expansion_matrix[,as.integer(input_batch[w,])] %*%   # first half here is very similar to the above expansion_matrix; can be pre-calculated
-#                          t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]))
-#                }
-#                
-#                }
-               
-               # A1 = 0 
-               # A2 = A1 + (B1 %*% C1)
-               # A3 = A2 + (B2 %*% C2)
-               # A4 = A3 + (B3 %*% C3)
-               #         A2                  A3                                 A4
-               # A4 = 0 + (B1 %*% C1) + (B2 %*% C2)  + (B3 %*% C3) 
-               # 
-               # 
-               
-               t_back_prop_derivs <- lapply(1:numwords, 
-                                            function(w, back_propagated_deriv_2, numhid1) { t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]) },
-                                            back_propagated_deriv_2=back_propagated_deriv_2,
-                                            numhid1=numhid1)
-               
-               mult_res <- mapply("%*%", input_batch_expansions[[m]], t_back_prop_derivs, SIMPLIFY=F)
-               gradients$word_embedding <- mult_res[[1]] + mult_res[[2]] + mult_res[[3]]
-                
+               gradients <- BProp(neural_net_states, weights, expanded_target_batch, input_batch_expansions[[m]], numhid1, numwords)
                
                #                % UPDATE WEIGHTS AND BIASES.  
                deltas <- mapply(delta_update_fn, delta=deltas, gradient=gradients, MoreArgs=list(momentum=momentum, batchsize=batchsize))
                weights <- mapply(weights_update_fn, delta=deltas, weight=weights, MoreArgs=list(learning_rate=learning_rate))  
-          
                
                #                % VALIDATE.
                if(mod(m, show_validation_CE_after) == 0) {
-                    myPrintf('\rRunning validation ...')
-                    neural_net_states <- fprop(data$valid_input, weights)
-                    #                     benchmark(
-                    #                     neural_net_states <- fprop(data$valid_input, weights, fn=repmat),
-                    #                     neural_net_states2 <- fprop(data$valid_input, weights, fn=myRepMat),
-                    #                     neural_net_states3 <- fprop(data$valid_input, weights, myRepMat2),
-                    #                     neural_net_states4 <- fprop(data$valid_input, weights, myRepMat3),
-                    #                     neural_net_states5 <- fprop(data$valid_input, weights, myRepMat4),
-                    #                     replications=2
-                    #                     )
-                    
-                    
-                    CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) /datasetsize
+                    CE <- Validate(data$valid_input, weights, expanded_valid_target)
                     myPrintf(' Validation CE %.3f\n', CE)
                }
           }          
@@ -240,19 +145,12 @@ train <- function(epochs) {
      myPrintf('Final Training CE %.3f\n', trainset_CE)
      
      #      % EVALUATE ON VALIDATION SET.
-     myPrintf('\rRunning validation ...')
-     
-     neural_net_states <- fprop(data$valid_input, weights)
-     CE = -matlab::sum(matlab::sum(expanded_valid_target * log(neural_net_states$output_layer_state + tiny))) /datasetsize
+     CE <- Validate(data$valid_input, weights, expanded_valid_target)
      myPrintf('\rFinal Validation CE %.3f\n', CE)
      
      #      % EVALUATE ON TEST SET.
      myPrintf('\rRunning test ...');
-     
-     neural_net_states <- fprop(data$test_input, weights)
-     datasetsize = size(data$test_input, 2);
-     expanded_test_target = expansion_matrix[, as.integer(data$test_target)];
-     CE = -matlab::sum(matlab::sum(expanded_test_target * log(neural_net_states$output_layer_state + tiny))) / datasetsize
+     CE <- Validate(data$test_input, weights, expansion_matrix[, as.integer(data$test_target)])
      myPrintf('\rFinal Test CE %.3f\n', CE)
      
      end_time <- proc.time() 
@@ -265,6 +163,50 @@ train <- function(epochs) {
 delta_update_fn <- function(delta, gradient, momentum, batchsize) { momentum * delta + gradient / batchsize}
 weights_update_fn <- function(delta, weight, learning_rate) {weight - (learning_rate * delta)}
 
+BProp <- function(neural_net_states, weights, expanded_target_batch, input_batch_expansion, numhid1, numwords) {
+     # input_batch_expansion should be list of 3
+     gradients <- vector("list", 5)
+     names(gradients) <- names(weights)
+     
+     #                % COMPUTE DERIVATIVE.
+     
+     #                %% Compute derivative of cross-entropy loss function.
+     error_deriv = neural_net_states$output_layer_state - expanded_target_batch  # all the derivatives are not saved between loops
+     gradients$hid_to_output <- neural_net_states$hidden_layer_state %*% t(error_deriv)
+     gradients$output_bias <- rowSums(error_deriv)
+     back_propagated_deriv_1 <- (weights$hid_to_output %*% error_deriv) * neural_net_states$hidden_layer_state * (1 - neural_net_states$hidden_layer_state)
+     gradients$embed_to_hid <- neural_net_states$embedding_layer_state %*% t(back_propagated_deriv_1)
+     gradients$hid_bias <- rowSums(back_propagated_deriv_1)
+     back_propagated_deriv_2 <- weights$embed_to_hid %*% back_propagated_deriv_1
+     
+     # Embedding layer
+     
+     t_back_prop_derivs <- lapply(1:numwords, 
+                                  function(w, back_propagated_deriv_2, numhid1) { t(back_propagated_deriv_2[(1 + (w - 1) * numhid1):(w * numhid1), ]) },
+                                  back_propagated_deriv_2=back_propagated_deriv_2,
+                                  numhid1=numhid1)
+     
+     mult_res <- mapply("%*%", input_batch_expansion, t_back_prop_derivs, SIMPLIFY=F)
+     gradients$word_embedding <- mult_res[[1]] + mult_res[[2]] + mult_res[[3]]
+     
+     return(gradients)
+     
+     
+}
+
+
+Validate <- function(input, weights, expanded_target) {
+     myPrintf('\rRunning validation ...')
+     datasetsize = size(input, 2);
+     neural_net_states <- fprop(input, weights) 
+     return(CEfn(expanded_target, neural_net_states$output_layer_state, datasetsize))
+}
+
+CEfn <- function(expanded_target, output_layer_state, datasetsize) {
+     tiny <- exp(-30)
+     CE <- -matlab::sum(matlab::sum(expanded_target * log(output_layer_state + tiny))) / datasetsize
+     return(CE)
+}
 
 # Rprof()
 # model <- train(1)
