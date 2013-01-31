@@ -111,15 +111,24 @@ train <- function(epochs) {
                # returns the embedding, hidden and output layer states
                
                
-               neural_net_states <- fprop(input_batch, weights, fn)
+               neural_net_states <- fprop(input_batch, weights)
                
-               res <- microbenchmark(
-                    fprop(input_batch, weights, reshape),
-                    fprop(input_batch, weights, myReshape),
-                    times=100
-                    )
-               print(res, "s")
-               boxplot(res, "s")
+#                fn1 <- function() {
+#                     fprop(input_batch, weights)
+#                }
+#                
+#                fn2 <- function() {
+#                     fprop_original(input_batch, weights$word_embedding,  weights$embed_to_hid,  weights$hid_to_output,  weights$hid_bias,  weights$output_bias)
+#                }
+#                               
+#                
+#                res <- microbenchmark(
+#                     fn1(),
+#                     fn2(),
+#                     times=100
+#                     )
+#                print(res, "s")
+#                boxplot(res, "s")
                
                
                
